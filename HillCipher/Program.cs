@@ -1,15 +1,20 @@
-namespace HillCipher
-{
-    public class Program
+using HillCipher.DataAccess.Postgres;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+var configuration = builder.Configuration;
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+builder.Services.AddDbContext<CipherDbContext>(
+    options =>
     {
-        public static void Main(string[] args)
-        {
-            var builder = WebApplication.CreateBuilder(args);
-            var app = builder.Build();
+        options.UseNpgsql(configuration.GetConnectionString(nameof(CipherDbContext)));
+    });
 
-            app.MapGet("/", () => "Hello World!");
+var app = builder.Build();
 
-            app.Run();
-        }
-    }
-}
+app.UseSwagger();
+app.UseSwaggerUI();
+
