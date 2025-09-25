@@ -18,3 +18,11 @@ var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI();
 
+app.MapGet("/", () => "HillCipher API is running!");
+
+Console.WriteLine("🚀 Application started successfully!");
+Console.WriteLine("📋 Swagger UI: https://localhost:7099/swagger");
+Console.WriteLine("🌐 API: https://localhost:7099/");
+Console.WriteLine("⏹️  Press Ctrl+C to stop");
+
+app.Run();

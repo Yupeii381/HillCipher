@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace HillCipher.DataAccess.Postgres.Migrations
 {
     [DbContext(typeof(CipherDbContext))]
-    [Migration("20250923060234_initial")]
-    partial class initial
+    [Migration("20250925175617_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
