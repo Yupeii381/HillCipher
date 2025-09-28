@@ -13,6 +13,8 @@ namespace HillCipher.DataAccess.Postgres.Models
         [Required]
         public DateTime CreatedAt { get; set; }
         [Required]
+        public DateTime UpdatedAt { get; set; }
+        [Required]
         public List<TextEntity> Texts { get; set; } = [];
     }
 }

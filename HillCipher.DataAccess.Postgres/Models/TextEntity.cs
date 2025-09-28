@@ -16,7 +16,6 @@ namespace HillCipher.DataAccess.Postgres.Models
         public DateTime CreatedAt { get; set; }
         [Required]
         public Guid UserId { get; set; }
-        [Required]
         public UserEntity? User { get; set; }
     }
 }
