@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace HillCipher.DataAccess.Postgres.Migrations
 {
     [DbContext(typeof(CipherDbContext))]
-    [Migration("20250925175617_Init")]
-    partial class Init
+    [Migration("20250929140205_Initialize")]
+    partial class Initialize
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -68,6 +68,9 @@ namespace HillCipher.DataAccess.Postgres.Migrations
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Username")
                         .IsRequired()

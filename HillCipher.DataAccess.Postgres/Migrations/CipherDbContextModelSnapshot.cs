@@ -66,6 +66,9 @@ namespace HillCipher.DataAccess.Postgres.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasColumnType("text");

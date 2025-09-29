@@ -28,6 +28,24 @@ app.MapControllers();
 
 app.MapGet("/", () => "HillCipher API is running!");
 
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<CipherDbContext>();
+
+    bool exists = await context.Database.CanConnectAsync();
+    Console.WriteLine($"Database exists: {exists}");
+
+    if (!exists)
+    {
+        Console.WriteLine("Creating database...");
+        await context.Database.EnsureCreatedAsync();
+        Console.WriteLine("Database created successfully!");
+    }
+    else
+    {
+        Console.WriteLine("Database already exists");
+    }
+}
 Console.WriteLine("🚀 Application started successfully!");
 Console.WriteLine("Endpoints: ");
 Console.WriteLine("📋 Swagger UI: https://localhost:7099/swagger");

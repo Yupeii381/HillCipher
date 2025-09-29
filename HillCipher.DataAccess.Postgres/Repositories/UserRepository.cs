@@ -33,9 +33,6 @@ public class UserRepository : IUserRepository
 
     public async Task<UserEntity> CreateAsync(UserEntity user)
     {
-        user.Id = Guid.NewGuid();
-        user.CreatedAt = DateTime.Now;
-
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
         return user;
@@ -61,6 +58,14 @@ public class UserRepository : IUserRepository
         if (user == null) return false;
         _context.Users.Remove(user);
         await _context.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> EmailExistsAsync(string email)
+    {
+        var existing = _context.Users.FirstOrDefault(t => t.Email == email);
+        if (existing == null) 
+           return false;
         return true;
     }
 }

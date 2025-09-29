@@ -11,9 +11,9 @@ namespace HillCipher.DataAccess.Postgres.Models
         [EmailAddress]
         public string Email { get; set; } = string.Empty;
         [Required]
-        public DateTime CreatedAt { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         [Required]
-        public DateTime UpdatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
         [Required]
         public List<TextEntity> Texts { get; set; } = [];
     }
