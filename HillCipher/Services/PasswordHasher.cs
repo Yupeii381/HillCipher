@@ -1,35 +1,26 @@
-﻿using Microsoft.AspNetCore.Cryptography.KeyDerivation;
-using Microsoft.EntityFrameworkCore.Query.Internal;
-using System.Security.Cryptography;
+﻿using Microsoft.AspNetCore.Identity;
 
 namespace HillCipher.Services
 {
+    public interface IPasswordHasher
+    {
+        string HashPassword(string password);
+        bool VerifyPassword(string password, string hashedPassword);
+    }
+
     public class PasswordHasher : IPasswordHasher
     {
-        const int SaltLength = 16;
-        const int HashIterations = 100000;
-        const int HashLength = 32;
-
+        private readonly PasswordHasher<object> _passwordHasher = new();
+        
         public string HashPassword(string password)
         {
-            byte[] salt = GenerateSalt();
-            byte[] hash = KeyDerivation.Pbkdf2(
-                password: password,
-                salt: salt,
-                prf: KeyDerivationPrf.HMACSHA256,
-                iterationCount: HashIterations,
-                numBytesRequested: HashLength
-             );
-
-            byte[] hashBytes = new byte[SaltLength + HashLength];
-            Array.Copy(salt, 0, hashBytes, 0, SaltLength);
-            Array.Copy(hash, 0, hashBytes, SaltLength, HashLength);
-
-            return Convert.ToBase64String(hashBytes);
+            return _passwordHasher.HashPassword(null, password);
         }
-        
-        private byte[] GenerateSalt() => RandomNumberGenerator.GetBytes(SaltLength);
 
-        public bool VerifyPassword(string password, )
+        public bool VerifyPassword(string password, string hashedPassword)
+        {
+            var result = _passwordHasher.VerifyHashedPassword(null, hashedPassword, password);
+            return result == PasswordVerificationResult.Success;
+        }
     }
 }

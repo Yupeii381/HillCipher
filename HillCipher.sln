@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HillCipher", "HillCipher\Hi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HillCipher.DataAccess.Postgres", "HillCipher.DataAccess.Postgres\HillCipher.DataAccess.Postgres.csproj", "{C2406D72-4E64-4168-AFA5-8FDF64BD95E8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Playground", "Playground\Playground.csproj", "{3593BB31-04A2-44FF-9F1C-8EF06211F35C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{C2406D72-4E64-4168-AFA5-8FDF64BD95E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C2406D72-4E64-4168-AFA5-8FDF64BD95E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C2406D72-4E64-4168-AFA5-8FDF64BD95E8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3593BB31-04A2-44FF-9F1C-8EF06211F35C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3593BB31-04A2-44FF-9F1C-8EF06211F35C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3593BB31-04A2-44FF-9F1C-8EF06211F35C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3593BB31-04A2-44FF-9F1C-8EF06211F35C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
