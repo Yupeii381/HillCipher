@@ -1,13 +1,63 @@
+
 using HillCipher.DataAccess.Postgres;
+using HillCipher.DataAccess.Postgres.Models;
 using HillCipher.DataAccess.Postgres.Repositories;
+using HillCipher.Interfaces;
+using HillCipher.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
 
+
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "HillCipher API",
+        Version = "v1"
+    });
+
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        In = ParameterLocation.Header,
+        Description = "Введите JWT токен, начиная с Bearer и пробела. Пример: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6...",
+        Name = "Authorization",
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                },
+                Scheme = "oauth2",
+                Name = "Bearer",
+                In = ParameterLocation.Header,
+            },
+            new List<string>()
+        }
+    });
+});
+
 builder.Services.AddControllers();
+
+builder.Services.AddScoped<IHillCipherService, HillCipherService>();
+builder.Services.AddScoped<IHillKeyService, HillKeyService>();
+builder.Services.AddScoped<IRequestHistoryRepository, RequestHistoryRepository>();
+builder.Services.AddScoped<ITextRepository, TextRepository>();
+builder.Services.AddScoped<IRequestHistoryRepository, RequestHistoryRepository>();
 
 builder.Services.AddDbContext<CipherDbContext>(
     options =>
@@ -15,12 +65,33 @@ builder.Services.AddDbContext<CipherDbContext>(
         options.UseNpgsql(configuration.GetConnectionString(nameof(CipherDbContext)));
     });
 
-builder.Services.AddScoped<ITextRepository, TextRepository>();
-builder.Services.AddScoped<IUserRepository, UserRepository>();
 
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+}).AddJwtBearer(options =>
+{
+    var JWTKey = configuration.GetValue<string>("JwtSettings:SecretKey");
+    if (string.IsNullOrEmpty(JWTKey))
+        throw new InvalidOperationException("❌ JWT secret key not found in configuration.");
+
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
+        ValidAudience = builder.Configuration["JwtSettings:Audience"],
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(JWTKey!))
+    };
+});
 
 var app = builder.Build();
 
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseSwagger();
 app.UseSwaggerUI();
 
@@ -46,6 +117,7 @@ using (var scope = app.Services.CreateScope())
         Console.WriteLine("Database already exists");
     }
 }
+
 Console.WriteLine("🚀 Application started successfully!");
 Console.WriteLine("Endpoints: ");
 Console.WriteLine("📋 Swagger UI: https://localhost:7099/swagger");
