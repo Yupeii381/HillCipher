@@ -41,6 +41,7 @@
 
   <ItemGroup>
     <Folder Include="DataAccess\Postgres\Dtos\User\" />
+    <Folder Include="DataAccess\Postgres\Dtos\Text\" />
   </ItemGroup>
 
 </Project>
