@@ -3,6 +3,7 @@ using HillCipher.DataAccess.Postgres;
 using HillCipher.DataAccess.Postgres.Repositories;
 using HillCipher.Interfaces;
 using HillCipher.Requests;
+using HillCipher.Responses;
 using HillCipher.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -57,6 +58,28 @@ builder.Services.AddLogging(logging =>
 });
 
 var app = builder.Build();
+
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        context.Response.ContentType = "application/json";
+
+        var errorMessage = "Произошла внутренняя ошибка сервера";
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+
+#if DEBUG
+        var exceptionHandlerFeature = 
+            context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
+        errorMessage = exceptionHandlerFeature?.Error.Message;
+        logger.LogError(exceptionHandlerFeature?.Error, "Unhandled exception");
+#endif
+
+        var response = ApiResponse<object>.Failure(errorMessage);
+        await context.Response.WriteAsJsonAsync(response);
+    });
+});
 
 app.UseAuthentication();
 app.UseAuthorization();

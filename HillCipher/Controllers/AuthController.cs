@@ -1,16 +1,15 @@
 ﻿using HillCipher.Requests;
+using HillCipher.Responses;
 using HillCipher.DataAccess.Postgres;
 using HillCipher.DataAccess.Postgres.Models;
 using HillCipher.DataAccess.Postgres.Repositories;
 //using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace HillCipher.Controllers
 {
@@ -31,10 +30,10 @@ namespace HillCipher.Controllers
 
 
         [HttpPost("register")]
-        public async Task<IActionResult> Register(RegisterRequest request)
+        public async Task<ActionResult<ApiResponse<string>>> Register(RegisterRequest request)
         {
             if (await _dbContext.Users.AnyAsync(u => u.Username == request.Username))
-                return BadRequest("Пользователь уже существует");
+                return BadRequest(ApiResponse<string>.Failure("Пользователь с таким именем уже существует."));
 
             var user = new UserEntity
             {
@@ -53,20 +52,16 @@ namespace HillCipher.Controllers
                 Action = "Succesfully registered"
             });
 
-            return Ok(new 
-            {
-                Message = "Регистрация успешна!",
-                Token = token
-            });
+            return Ok(ApiResponse<string>.Success(token, "Регистрация прошла успешно"));
         }
 
         [HttpPost("Login")]
-        public async Task<IActionResult> Login(LoginRequest request)
+        public async Task<ActionResult<ApiResponse<AuthResponse>>> Login(LoginRequest request)
         {
             var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
 
             if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-                    return BadRequest("Неверное имя пользователя или пароль");
+                    return BadRequest(ApiResponse<AuthResponse>.Failure("Неверное имя пользователя или пароль"));
 
             var token = GenerateJwtToken(user);
 
@@ -76,29 +71,27 @@ namespace HillCipher.Controllers
                 Action = "Succesfully logged in"
             });
 
-            return Ok(new {
-                Message = "Вход выполнен успешно!",
-                Token = token
-            });
+            var response = new AuthResponse(token, user.Username);
+
+            return Ok(ApiResponse<AuthResponse>.Success(response, "Вход выполнен"));
         }
 
         [HttpPatch("change-password")]
-        public async Task<IActionResult> ChangePassword(ChangePasswordRequest request)
+        public async Task<ActionResult<ApiResponse<AuthResponse>>> ChangePassword(ChangePasswordRequest request)
         {
             var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userIdString))
-            {
-                return Unauthorized("Не найден технический токен пользователя.");
-            }
-            var userId = int.Parse(userIdString);
+                return Unauthorized(ApiResponse<AuthResponse>.Failure("Требуется авторизация"));
+
+            if (!int.TryParse(userIdString, out var userId))
+                return BadRequest(ApiResponse<AuthResponse>.Failure("Некорректный идентификатор пользователя"));
 
             var user = await _dbContext.Users.FindAsync(userId);
-
             if (user == null)
-                return NotFound("Пользователь не найден!");
+                return NotFound(ApiResponse<AuthResponse>.Failure("Пользователь не найден"));
 
             if (!BCrypt.Net.BCrypt.Verify(request.OldPassword, user.PasswordHash))
-                return BadRequest("Неверный старый пароль!");
+                return BadRequest(ApiResponse<AuthResponse>.Failure("Неверный старый пароль"));
 
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
             user.TokenVersion++;
@@ -106,18 +99,15 @@ namespace HillCipher.Controllers
             await _historyRepository.AddAsync(new RequestHistory
             {
                 UserId = user.Id,
-                Action = "Password changed successfully"
+                Action = "Пароль успешно изменен"
             });
 
             await _dbContext.SaveChangesAsync();
 
             var newToken = GenerateJwtToken(user);
+            var response = new AuthResponse(newToken, user.Username);
 
-            return Ok(new
-            {
-                Message = "Пароль успешно изменен!",
-                Token = newToken
-            });
+            return Ok(ApiResponse<AuthResponse>.Success(response, "Пароль успешно изменён"));
         }
 
 
