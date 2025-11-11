@@ -1,6 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace HillCipher.Client.ViewModels
+namespace Client.ViewModels
 {
     public class ViewModelBase : ObservableObject
     {

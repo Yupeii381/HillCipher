@@ -1,9 +1,9 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
-using HillCipher.Client.ViewModels;
+using Client.ViewModels;
 using System;
 
-namespace HillCipher.Client
+namespace Client
 {
     public class ViewLocator : IDataTemplate
     {

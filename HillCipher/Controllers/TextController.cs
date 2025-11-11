@@ -1,4 +1,4 @@
-using HillCipher.DataAccess.Postgres.Repositories;
+п»їusing HillCipher.DataAccess.Postgres.Repositories;
 using HillCipher.DataAccess.Postgres.Models;
 using HillCipher.Requests;
 using HillCipher.Services;
@@ -30,7 +30,7 @@ public class TextController : ControllerBase
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userIdClaim))
         {
-            throw new UnauthorizedAccessException("Пользователя не существует");
+            throw new UnauthorizedAccessException("РџРѕР»СЊР·РѕРІР°С‚РµР»СЏ РЅРµ СЃСѓС‰РµСЃС‚РІСѓРµС‚");
         }
         return int.Parse(userIdClaim);
     }
@@ -135,7 +135,7 @@ public class TextController : ControllerBase
         var userId = GetUserId();
         var text = await _textRepo.GetByIdAsync(id, userId);
         if (text == null)
-            return NotFound("Текст не найден");
+            return NotFound("РўРµРєСЃС‚ РЅРµ РЅР°Р№РґРµРЅ");
 
         var result = _cipherService.Encrypt(text.Content, request.Key, request.Alphabet);
 
@@ -156,7 +156,7 @@ public class TextController : ControllerBase
         var userId = GetUserId();
         var text = await _textRepo.GetByIdAsync(id, userId);
         if (text == null)
-            return NotFound("Текст не найден");
+            return NotFound("РўРµРєСЃС‚ РЅРµ РЅР°Р№РґРµРЅ");
 
         var result = _cipherService.Decrypt(text.Content, request.Key, request.Alphabet);
 
