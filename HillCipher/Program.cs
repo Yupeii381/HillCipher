@@ -1,5 +1,6 @@
 ﻿
 using HillCipher.DataAccess.Postgres;
+using HillCipher.DataAccess.Postgres.Models;
 using HillCipher.DataAccess.Postgres.Repositories;
 using HillCipher.Interfaces;
 using HillCipher.Requests;
@@ -9,6 +10,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Linq.Expressions;
+using System.Security.Claims;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -79,6 +82,64 @@ app.UseExceptionHandler(errorApp =>
         var response = ApiResponse<object>.Failure(errorMessage);
         await context.Response.WriteAsJsonAsync(response);
     });
+});
+
+app.Use(async (context, next) =>
+{
+    var historyRepo = context.RequestServices.GetRequiredService<IRequestHistoryRepository>();
+    var userIdClaim = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+    var userId = int.TryParse(userIdClaim, out var id) ? id : (int?)null;
+
+    var actionName = $"{context.Request.Method} {context.Request.Path}{context.Request.QueryString}";
+
+    var historyEntry = new RequestHistory
+    {
+        UserId = userId ?? 0,
+        ActionName = actionName,
+        Action = context.Request.Path.Value?.Split('/').LastOrDefault() ?? "Unknown",
+        Timestamp = DateTime.UtcNow
+    };
+
+    try
+    {
+        await next();
+
+        if (context.Response.StatusCode is >= 200 and < 400)
+            historyEntry.Success = true;
+        else
+        {
+            historyEntry.Success = false;
+            historyEntry.ErrorMessage = $"Client error: {context.Response.StatusCode}";
+        }
+    }
+    catch (Exception ex)
+    {
+        historyEntry.Success = false;
+        historyEntry.ErrorMessage = ex.Message;
+
+        var error = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development"
+            ? ex.ToString()
+            : "Внутрення ошибка сервера";
+
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsJsonAsync(ApiResponse<object>.Failure(error));
+        return;
+    }
+    finally
+    {
+        if (userId.HasValue && userId > 0)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await historyRepo.AddAsync(historyEntry);
+                }
+                catch { }
+            });
+        }
+    }
 });
 
 app.UseAuthentication();

@@ -1,11 +1,13 @@
 ﻿using HillCipher.DataAccess.Postgres.Repositories;
 using HillCipher.DataAccess.Postgres.Models;
+using HillCipher.DataAccess.Postgres.Dtos;
 using HillCipher.Requests;
 using HillCipher.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using HillCipher.Interfaces;
+using HillCipher.Responses;
 
 namespace HillCipher.Controllers;
 
@@ -105,25 +107,21 @@ public class TextController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetByIdText(int id)
+    public async Task<ActionResult<ApiResponse<TextDto>>> GetByIdText(int id)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
         var userId = GetUserId();
         var text = await _textRepo.GetByIdAsync(id, userId);
+        var dto = new TextDto(text.Id, text.Content, text.CreatedAt, text.UpdatedAt);
         return text == null ? NotFound() : Ok(text);
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAllText()
+    public async Task<ActionResult<ApiResponse<List<TextDto>>>> GetAllText()
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
         var userId = GetUserId();
         var texts = await _textRepo.GetAllAsync(userId);
-        return Ok(texts);
+        var dtos = texts.Select(t => new TextDto(t.Id, t.Content, t.CreatedAt, t.UpdatedAt)).ToList();
+        return Ok(ApiResponse<List<TextDto>>.Success(dtos));
     }
 
     [HttpPost("{id}/encrypt")]

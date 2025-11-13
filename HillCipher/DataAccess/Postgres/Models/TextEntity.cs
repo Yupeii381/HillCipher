@@ -12,6 +12,7 @@ namespace HillCipher.DataAccess.Postgres.Models
         [JsonIgnore]
         public UserEntity User { get; set; } = null!;
 
+        [Required, MaxLength(1000)]
         public string Content { get; set; } = string.Empty;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
