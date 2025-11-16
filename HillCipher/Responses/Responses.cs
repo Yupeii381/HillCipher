@@ -23,3 +23,12 @@ public record AuthResponse(
     string Token,
     string Username
 );
+
+public record CipherResponse(
+    string Content
+);
+
+public record TextResponse(
+    int Id,
+    string Content
+);

@@ -49,7 +49,7 @@ public class AuthController : ControllerBase
         await _historyRepository.AddAsync(new RequestHistory
         {
             UserId = user.Id,
-            Action = "Succesfully registered"
+            Action = "Successfully registered"
         });
 
         var response = new AuthResponse(token, user.Username);
@@ -70,7 +70,7 @@ public class AuthController : ControllerBase
         await _historyRepository.AddAsync(new RequestHistory
         {
             UserId = user.Id,
-            Action = "Succesfully logged in"
+            Action = "Successfully logged in"
         });
 
         var response = new AuthResponse(token, user.Username);
