@@ -3,6 +3,7 @@ using System;
 using HillCipher.DataAccess.Postgres;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace HillCipher.Migrations
 {
     [DbContext(typeof(CipherDbContext))]
-    partial class CipherDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251113193404_Latest")]
+    partial class Latest
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

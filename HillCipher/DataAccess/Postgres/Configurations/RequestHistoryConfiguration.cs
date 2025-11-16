@@ -16,7 +16,6 @@ public class RequestHistoryConfiguration : IEntityTypeConfiguration<RequestHisto
         builder.Property(x => x.ErrorMessage).HasMaxLength(500);
         builder.Property(x => x.InputText).HasMaxLength(500);
         builder.Property(x => x.ResultText).HasMaxLength(500);
-        builder.Property(x => x.Timestamp).HasDefaultValue("NOW()");
     
         builder.HasIndex(x => x.UserId);
         builder.HasIndex(x => x.Timestamp);

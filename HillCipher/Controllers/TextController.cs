@@ -111,8 +111,8 @@ public class TextController : ControllerBase
     {
         var userId = GetUserId();
         var text = await _textRepo.GetByIdAsync(id, userId);
-        var dto = new TextDto(text.Id, text.Content, text.CreatedAt, text.UpdatedAt);
-        return text == null ? NotFound() : Ok(text);
+        var dto = text != null ? new TextDto(text.Id, text.Content, text.CreatedAt, text.UpdatedAt) : null;
+        return dto == null ? NotFound() : Ok(text);
     }
 
     [HttpGet]
