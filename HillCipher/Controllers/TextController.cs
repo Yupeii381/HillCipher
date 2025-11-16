@@ -1,11 +1,13 @@
-using HillCipher.DataAccess.Postgres.Repositories;
+п»їusing HillCipher.DataAccess.Postgres.Repositories;
 using HillCipher.DataAccess.Postgres.Models;
+using HillCipher.DataAccess.Postgres.Dtos;
 using HillCipher.Requests;
 using HillCipher.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using HillCipher.Interfaces;
+using HillCipher.Responses;
 
 namespace HillCipher.Controllers;
 
@@ -30,13 +32,13 @@ public class TextController : ControllerBase
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userIdClaim))
         {
-            throw new UnauthorizedAccessException("Пользователя не существует");
+            throw new UnauthorizedAccessException("РџРѕР»СЊР·РѕРІР°С‚РµР»СЏ РЅРµ СЃСѓС‰РµСЃС‚РІСѓРµС‚");
         }
         return int.Parse(userIdClaim);
     }
 
     [HttpPost]
-    public async Task<IActionResult> AddText([FromBody] AddTextRequest request)
+    public async Task<ActionResult<ApiResponse<TextResponse>>> AddText([FromBody] AddTextRequest request)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
@@ -51,15 +53,13 @@ public class TextController : ControllerBase
             InputText = request.Content
         });
 
-        return Ok(new
-        {
-            text.Id,
-            text.Content
-        });
+        var response = new TextResponse(text.Id, text.Content);
+
+        return Ok(ApiResponse<TextResponse>.Success(response));
     }
 
     [HttpPatch("{id:int}")]
-    public async Task<IActionResult> UpdateText(int id, [FromBody] UpdateTextRequest request)
+    public async Task<ActionResult<ApiResponse<TextResponse>>> UpdateText(int id, [FromBody] UpdateTextRequest request)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
@@ -79,19 +79,14 @@ public class TextController : ControllerBase
             InputText = request.Content
         });
 
-        return Ok(new 
-        {
-            text.Id,
-            text.Content
-        });
+        var response = new TextResponse(text.Id, text.Content);
+
+        return Ok(ApiResponse<TextResponse>.Success(response));
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteText(int id)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
         var userId = GetUserId();
         await _textRepo.DeleteAsync(id, userId);
 
@@ -105,37 +100,30 @@ public class TextController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetByIdText(int id)
+    public async Task<ActionResult<ApiResponse<TextResponse>>> GetByIdText(int id)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
         var userId = GetUserId();
         var text = await _textRepo.GetByIdAsync(id, userId);
-        return text == null ? NotFound() : Ok(text);
+        var dto = new TextResponse(text.Id, text.Content);
+        return text == null ? NotFound() : Ok(ApiResponse<TextResponse>.Success(dto));
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAllText()
+    public async Task<ActionResult<ApiResponse<List<TextResponse>>>> GetAllText()
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
         var userId = GetUserId();
         var texts = await _textRepo.GetAllAsync(userId);
-        return Ok(texts);
+        var dtos = texts.Select(t => new TextResponse(t.Id, t.Content)).ToList();
+        return Ok(ApiResponse<List<TextResponse>>.Success(dtos));
     }
 
     [HttpPost("{id}/encrypt")]
-    public async Task<IActionResult> EncryptText(int id, [FromBody] CipherRequest request)
+    public async Task<ActionResult<ApiResponse<CipherResponse>>> EncryptText(int id, [FromBody] CipherRequest request)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
         var userId = GetUserId();
         var text = await _textRepo.GetByIdAsync(id, userId);
         if (text == null)
-            return NotFound("Текст не найден");
+            return NotFound(ApiResponse<CipherResponse>.Failure("РўРµРєСЃС‚ РЅРµ Р±С‹Р» РЅР°Р№РґРµРЅ."));
 
         var result = _cipherService.Encrypt(text.Content, request.Key, request.Alphabet);
 
@@ -147,27 +135,31 @@ public class TextController : ControllerBase
             ResultText = result
         });
 
-        return Ok(new { Encrypted = result });
+        var response = new CipherResponse(result);
+
+        return Ok(ApiResponse<CipherResponse>.Success(response));
     }
 
     [HttpPost("{id}/decrypt")]
-    public async Task<IActionResult> DecryptText(int id, [FromBody] CipherRequest request)
+    public async Task<ActionResult<ApiResponse<CipherResponse>>> DecryptText(int id, [FromBody] CipherRequest request)
     {
         var userId = GetUserId();
         var text = await _textRepo.GetByIdAsync(id, userId);
         if (text == null)
-            return NotFound("Текст не найден");
+            return NotFound(ApiResponse<CipherResponse>.Failure("РўРµРєСЃС‚ РЅРµ Р±С‹Р» РЅР°Р№РґРµРЅ"));
 
         var result = _cipherService.Decrypt(text.Content, request.Key, request.Alphabet);
 
         await _historyRepo.AddAsync(new RequestHistory
         {
             UserId = userId,
-            Action = $"Encrypted text with id: {text.Id}",
+            Action = $"Decrypted text with id: {text.Id}",
             InputText = text.Content,
             ResultText = result
         });
 
-        return Ok(new { Decrypted = result });
+        var response = new CipherResponse(result);
+
+        return Ok(ApiResponse<CipherResponse>.Success(response));
     }
 }

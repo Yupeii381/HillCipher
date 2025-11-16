@@ -1,147 +1,138 @@
 ﻿using HillCipher.Requests;
+using HillCipher.Responses;
 using HillCipher.DataAccess.Postgres;
 using HillCipher.DataAccess.Postgres.Models;
 using HillCipher.DataAccess.Postgres.Repositories;
 //using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using System.Threading.Tasks;
 
-namespace HillCipher.Controllers
+namespace HillCipher.Controllers;
+
+[Route("api/[controller]")]
+[ApiController]
+public class AuthController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class AuthController : ControllerBase
+    private readonly CipherDbContext _dbContext;
+    private readonly IConfiguration _config;
+    private readonly IRequestHistoryRepository _historyRepository;
+
+    public AuthController(CipherDbContext dbContext, IConfiguration config, IRequestHistoryRepository historyRepository)
     {
-        private readonly CipherDbContext _dbContext;
-        private readonly IConfiguration _config;
-        private readonly IRequestHistoryRepository _historyRepository;
+        _dbContext = dbContext;
+        _config = config;
+        _historyRepository = historyRepository;
+    }
 
-        public AuthController(CipherDbContext dbContext, IConfiguration config, IRequestHistoryRepository historyRepository)
+
+    [HttpPost("register")]
+    public async Task<ActionResult<ApiResponse<AuthResponse>>> Register(RegisterRequest request)
+    {
+        if (await _dbContext.Users.AnyAsync(u => u.Username == request.Username))
+            return BadRequest(ApiResponse<string>.Failure("Пользователь с таким именем уже существует."));
+
+        var user = new UserEntity
         {
-            _dbContext = dbContext;
-            _config = config;
-            _historyRepository = historyRepository;
-        }
+            Username = request.Username,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password)
+        };
 
+        _dbContext.Users.Add(user);
+        await _dbContext.SaveChangesAsync();
 
-        [HttpPost("register")]
-        public async Task<IActionResult> Register(RegisterRequest request)
+        var token = GenerateJwtToken(user);
+
+        await _historyRepository.AddAsync(new RequestHistory
         {
-            if (await _dbContext.Users.AnyAsync(u => u.Username == request.Username))
-                return BadRequest("Пользователь уже существует");
+            UserId = user.Id,
+            Action = "Successfully registered"
+        });
 
-            var user = new UserEntity
-            {
-                Username = request.Username,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password)
-            };
+        var response = new AuthResponse(token, user.Username);
 
-            _dbContext.Users.Add(user);
-            await _dbContext.SaveChangesAsync();
+        return Ok(ApiResponse<AuthResponse>.Success(response, "Регистрация прошла успешно"));
+    }
 
-            var token = GenerateJwtToken(user);
+    [HttpPost("Login")]
+    public async Task<ActionResult<ApiResponse<AuthResponse>>> Login(LoginRequest request)
+    {
+        var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
 
-            await _historyRepository.AddAsync(new RequestHistory
-            {
-                UserId = user.Id,
-                Action = "Succesfully registered"
-            });
+        if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+            return BadRequest(ApiResponse<AuthResponse>.Failure("Неверное имя пользователя или пароль"));
 
-            return Ok(new 
-            {
-                Message = "Регистрация успешна!",
-                Token = token
-            });
-        }
+        var token = GenerateJwtToken(user);
 
-        [HttpPost("Login")]
-        public async Task<IActionResult> Login(LoginRequest request)
+        await _historyRepository.AddAsync(new RequestHistory
         {
-            var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
+            UserId = user.Id,
+            Action = "Successfully logged in"
+        });
 
-            if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-                    return BadRequest("Неверное имя пользователя или пароль");
+        var response = new AuthResponse(token, user.Username);
 
-            var token = GenerateJwtToken(user);
+        return Ok(ApiResponse<AuthResponse>.Success(response, "Вход выполнен"));
+    }
 
-            await _historyRepository.AddAsync(new RequestHistory
-            {
-                UserId = user.Id,
-                Action = "Succesfully logged in"
-            });
+    [HttpPatch("change-password")]
+    public async Task<ActionResult<ApiResponse<AuthResponse>>> ChangePassword(ChangePasswordRequest request)
+    {
+        var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userIdString))
+            return Unauthorized(ApiResponse<AuthResponse>.Failure("Требуется авторизация"));
 
-            return Ok(new {
-                Message = "Вход выполнен успешно!",
-                Token = token
-            });
-        }
+        if (!int.TryParse(userIdString, out var userId))
+            return BadRequest(ApiResponse<AuthResponse>.Failure("Некорректный идентификатор пользователя"));
 
-        [HttpPatch("change-password")]
-        public async Task<IActionResult> ChangePassword(ChangePasswordRequest request)
+        var user = await _dbContext.Users.FindAsync(userId);
+        if (user == null)
+            return NotFound(ApiResponse<AuthResponse>.Failure("Пользователь не найден"));
+
+        if (!BCrypt.Net.BCrypt.Verify(request.OldPassword, user.PasswordHash))
+            return BadRequest(ApiResponse<AuthResponse>.Failure("Неверный старый пароль"));
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        user.TokenVersion++;
+
+        await _historyRepository.AddAsync(new RequestHistory
         {
-            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userIdString))
-            {
-                return Unauthorized("Не найден технический токен пользователя.");
-            }
-            var userId = int.Parse(userIdString);
+            UserId = user.Id,
+            Action = "Пароль успешно изменен"
+        });
 
-            var user = await _dbContext.Users.FindAsync(userId);
+        await _dbContext.SaveChangesAsync();
 
-            if (user == null)
-                return NotFound("Пользователь не найден!");
+        var newToken = GenerateJwtToken(user);
+        var response = new AuthResponse(newToken, user.Username);
 
-            if (!BCrypt.Net.BCrypt.Verify(request.OldPassword, user.PasswordHash))
-                return BadRequest("Неверный старый пароль!");
-
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
-            user.TokenVersion++;
-
-            await _historyRepository.AddAsync(new RequestHistory
-            {
-                UserId = user.Id,
-                Action = "Password changed successfully"
-            });
-
-            await _dbContext.SaveChangesAsync();
-
-            var newToken = GenerateJwtToken(user);
-
-            return Ok(new
-            {
-                Message = "Пароль успешно изменен!",
-                Token = newToken
-            });
-        }
+        return Ok(ApiResponse<AuthResponse>.Success(response, "Пароль успешно изменён"));
+    }
 
 
-        private string GenerateJwtToken(UserEntity user)
+    private string GenerateJwtToken(UserEntity user)
+    {
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["JwtSettings:SecretKey"]!));
+        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var claims = new[]
         {
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["JwtSettings:SecretKey"]!));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-            var claims = new[]
-            {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.Username),
                 new Claim(ClaimTypes.Version, user.TokenVersion.ToString())
             };
 
-            var token = new JwtSecurityToken(
-                issuer: _config["JwtSettings:Issuer"],
-                audience: _config["JwtSettings:Audience"],
-                claims: claims,
-                expires: DateTime.UtcNow.AddHours(2),
-                signingCredentials: creds
-            );
+        var token = new JwtSecurityToken(
+            issuer: _config["JwtSettings:Issuer"],
+            audience: _config["JwtSettings:Audience"],
+            claims: claims,
+            expires: DateTime.UtcNow.AddHours(2),
+            signingCredentials: creds
+        );
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
-        }
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }
